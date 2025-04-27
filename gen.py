@@ -206,6 +206,46 @@ class Pascal:
     def end_enum(self):
         print(");\n")
 
+class Zig:
+    def file_header(self):
+        print(
+            """//! AUTO-GENERATED USING zydis-bindgen!
+"""
+        )
+
+    def start_enum(self, name, full_name, brief_comment):
+        # reset used enum values
+        self.values = set()
+        print(f"/// {brief_comment}")
+        print(f"pub const {name.rstrip('_')} = enum(c_int) {{")
+
+    def end_enum(self):
+        print(f"}};")
+        # write enum members which had conflicting tags
+        for declaration in self.conflicting_enum_tags:
+            print(f"const {declaration[0]} = {declaration[1]};")
+        # drop written members
+        self.conflicting_enum_tags = []
+
+    def enum_member(self, name, full_name: str, val, brief_comment, last):
+        if val in self.values:
+            self.conflicting_enum_tags.append((full_name, val))
+            return
+
+        if brief_comment:
+            print(f"    /// {brief_comment}")
+
+        if last:
+            print(f"    {name} = {val}")
+        else:
+            print(f"    {name} = {val},")
+
+        self.values.add(val)
+
+    def __init__(self):
+        self.values = set()
+        self.conflicting_enum_tags = []
+
 
 MODES = {
     "rust": Rust(),
@@ -214,6 +254,7 @@ MODES = {
     "csharp": CSharp(),
     "ocaml": Ocaml(),
     "pascal": Pascal(),
+    "zig": Zig(),
 }
 
 if __name__ == "__main__":
